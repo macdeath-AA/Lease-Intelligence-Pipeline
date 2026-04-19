@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+python-multipart
+pymupdf
+anthropic
+sqlalchemy
+pydantic
+python-dotenv
