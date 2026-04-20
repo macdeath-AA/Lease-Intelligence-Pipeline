@@ -31,6 +31,7 @@ LEASE_EXTRACTION_TOOL = {
             "rent_escalation_pct":  {"type": ["number", "null"]},
             "security_deposit":     {"type": ["number", "null"]},
             "personal_guarantee":   {"type": ["boolean", "null"]},
+            "sqft":                 {"type": ["number", "null"]},
             "options":              {"type": "array", "items": {"type": "string"}},
             "key_clauses":          {"type": "array", "items": {"type": "string"}},
         },
@@ -89,8 +90,8 @@ async def extract_risk_flags(lease_data: LeaseData) -> RiskAnalysis:
     tool_input = response.content[0].input
     return RiskAnalysis(**tool_input)
 
-async def run_pipeline(file_bytes: bytes) -> PipelineResult:
+async def run_pipeline(file_bytes: bytes, filename: str) -> PipelineResult:
     raw_text = extract_text_from_pdf(file_bytes)
     lease_data = await extract_structured_data(raw_text)
     risk = await extract_risk_flags(lease_data)
-    return PipelineResult(lease=lease_data, risk=risk)
+    return PipelineResult(filename=filename, lease=lease_data, risk=risk)

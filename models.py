@@ -15,6 +15,7 @@ class LeaseData(BaseModel):
     rent_escalation_pct: float | None = None
     security_deposit: float | None = None
     personal_guarantee: bool | None = None
+    sqft: float | None = None
     options: list[str] = []
     key_clauses: list[str] = []
 
@@ -24,8 +25,27 @@ class RiskAnalysis(BaseModel):
     risk_score: int | None = None  # 1–10
 
 class PipelineResult(BaseModel):
+    filename: str
     lease: LeaseData
     risk: RiskAnalysis
+
+class RentRollRow(BaseModel):
+    filename: str
+    tenant_name: str | None
+    property_address: str | None
+    sqft: float | None
+    rent_per_sqft: float | None
+    base_rent_monthly: float | None
+    lease_start: date | None
+    lease_end: date | None
+    rent_escalation_pct: float | None
+    personal_guarantee: bool | None
+    risk_score: int | None
+
+class RentRollReport(BaseModel):
+    rows: list[RentRollRow]
+    inconsistencies: list[str]
+    opportunities: list[str]
 
 # --- SQLAlchemy (DB) ---
 

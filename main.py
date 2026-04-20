@@ -1,13 +1,15 @@
 # main.py — FastAPI app, routes, serves frontend
 
-from fastapi import FastAPI, UploadFile, File, Depends, HTTPException
+import asyncio
+from typing import List
+from fastapi import FastAPI, UploadFile, File
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-from sqlalchemy.orm import Session
+from fastapi.responses import PlainTextResponse
 
-from database import init_db, get_db, save_lease, fetch_lease, fetch_all_leases
+from database import init_db
 from pipeline import run_pipeline
-from models import PipelineResult
+from rent_roll import build_rent_roll, to_csv
+from models import RentRollReport
 
 app = FastAPI(title="Lease Intelligence Pipeline")
 
@@ -15,23 +17,17 @@ app = FastAPI(title="Lease Intelligence Pipeline")
 def startup():
     init_db()
 
-@app.post("/api/leases", response_model=PipelineResult)
-async def upload_lease(file: UploadFile = File(...), db: Session = Depends(get_db)):
-    contents = await file.read()
-    result = await run_pipeline(contents)
-    save_lease(db, result, file.filename)
-    return result
+@app.post("/api/rent-roll", response_model=RentRollReport)
+async def upload_leases(files: List[UploadFile] = File(...)):
+    contents = await asyncio.gather(*[f.read() for f in files])
+    results = await asyncio.gather(*[run_pipeline(c, f.filename) for c, f in zip(contents, files)])
+    return build_rent_roll(list(results))
 
-@app.get("/api/leases/{lease_id}")
-def get_lease(lease_id: int, db: Session = Depends(get_db)):
-    record = fetch_lease(db, lease_id)
-    if not record:
-        raise HTTPException(status_code=404, detail="Lease not found")
-    return {"id": record.id, "filename": record.filename, "lease": record.lease_data, "risk": record.risk_data, "created_at": record.created_at}
-
-@app.get("/api/leases")
-def list_leases(db: Session = Depends(get_db)):
-    records = fetch_all_leases(db)
-    return [{"id": r.id, "filename": r.filename, "risk_score": r.risk_data.get("risk_score"), "created_at": r.created_at} for r in records]
+@app.post("/api/rent-roll/csv")
+async def upload_leases_csv(files: List[UploadFile] = File(...)):
+    contents = await asyncio.gather(*[f.read() for f in files])
+    results = await asyncio.gather(*[run_pipeline(c, f.filename) for c, f in zip(contents, files)])
+    report = build_rent_roll(list(results))
+    return PlainTextResponse(to_csv(report), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=rent_roll.csv"})
 
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
