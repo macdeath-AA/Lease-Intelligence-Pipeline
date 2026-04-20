@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lease Intelligence Pipeline</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen font-mono">
+
+  <div class="max-w-3xl mx-auto px-6 py-12">
+    <h1 class="text-2xl font-bold mb-1 tracking-tight">Lease Intelligence Pipeline</h1>
+    <p class="text-gray-400 text-sm mb-10">Upload a lease PDF to extract structured data and risk analysis.</p>
+
+    <!-- Upload -->
+    <label id="dropzone" class="flex flex-col items-center justify-center border-2 border-dashed border-gray-700 rounded-xl p-10 cursor-pointer hover:border-indigo-500 transition-colors">
+      <svg class="w-8 h-8 text-gray-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 16v-8m0 0-3 3m3-3 3 3M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1"/>
+      </svg>
+      <span id="dropLabel" class="text-gray-400 text-sm">Drop a PDF or click to browse</span>
+      <input id="fileInput" type="file" accept=".pdf" class="hidden" />
+    </label>
+
+    <!-- Spinner -->
+    <div id="spinner" class="hidden mt-8 flex items-center gap-3 text-indigo-400 text-sm">
+      <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+      </svg>
+      Running pipeline…
+    </div>
+
+    <!-- Results -->
+    <div id="results" class="hidden mt-8 space-y-6">
+
+      <!-- Lease Data -->
+      <div class="bg-gray-900 rounded-xl p-6 border border-gray-800">
+        <h2 class="text-sm font-semibold text-indigo-400 uppercase tracking-widest mb-4">Extracted Data</h2>
+        <dl id="leaseFields" class="grid grid-cols-2 gap-x-6 gap-y-3 text-sm"></dl>
+
+        <div class="mt-4" id="optionsRow"></div>
+        <div class="mt-3" id="clausesRow"></div>
+      </div>
+
+      <!-- Risk -->
+      <div class="bg-gray-900 rounded-xl p-6 border border-gray-800">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-sm font-semibold text-indigo-400 uppercase tracking-widest">Risk Analysis</h2>
+          <span id="riskBadge" class="text-xs font-bold px-3 py-1 rounded-full"></span>
+        </div>
+        <p id="riskSummary" class="text-sm text-gray-300 mb-4"></p>
+        <ul id="riskFlags" class="space-y-1 text-sm text-gray-400 list-disc list-inside"></ul>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const dropzone  = document.getElementById('dropzone');
+    const dropLabel = document.getElementById('dropLabel');
+    const spinner   = document.getElementById('spinner');
+    const results   = document.getElementById('results');
+
+    dropzone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files[0]) handleUpload(fileInput.files[0]);
+    });
+
+    async function handleUpload(file) {
+      dropLabel.textContent = file.name;
+      results.classList.add('hidden');
+      spinner.classList.remove('hidden');
+
+      const form = new FormData();
+      form.append('file', file);
+
+      try {
+        const res  = await fetch('/api/leases', { method: 'POST', body: form });
+        const data = await res.json();
+        renderResults(data);
+      } catch (e) {
+        dropLabel.textContent = 'Error — try again';
+      } finally {
+        spinner.classList.add('hidden');
+      }
+    }
+
+    function renderResults(data) {
+      const lease = data.lease;
+      const risk  = data.risk;
+
+      const fields = [
+        ['Tenant',        lease.tenant_name],
+        ['Property',      lease.property_address],
+        ['Lease Start',   lease.lease_start],
+        ['Lease End',     lease.lease_end],
+        ['Term',          lease.term_months ? `${lease.term_months} months` : null],
+        ['Base Rent',     lease.base_rent_monthly ? `$${lease.base_rent_monthly.toLocaleString()}/mo` : null],
+        ['Escalation',    lease.rent_escalation_pct ? `${lease.rent_escalation_pct}%` : null],
+        ['Deposit',       lease.security_deposit ? `$${lease.security_deposit.toLocaleString()}` : null],
+        ['Personal Guarantee', lease.personal_guarantee === null ? null : lease.personal_guarantee ? 'Yes' : 'No'],
+      ];
+
+      document.getElementById('leaseFields').innerHTML = fields.map(([k, v]) => `
+        <div><dt class="text-gray-500">${k}</dt><dd class="text-gray-100 mt-0.5">${v ?? '—'}</dd></div>
+      `).join('');
+
+      document.getElementById('optionsRow').innerHTML = lease.options?.length
+        ? `<p class="text-gray-500 text-xs mb-1">Options</p><div class="flex gap-2 flex-wrap">${lease.options.map(o => `<span class="bg-indigo-900 text-indigo-300 text-xs px-2 py-0.5 rounded">${o}</span>`).join('')}</div>` : '';
+
+      document.getElementById('clausesRow').innerHTML = lease.key_clauses?.length
+        ? `<p class="text-gray-500 text-xs mb-1">Key Clauses</p><div class="flex gap-2 flex-wrap">${lease.key_clauses.map(c => `<span class="bg-gray-800 text-gray-300 text-xs px-2 py-0.5 rounded">${c}</span>`).join('')}</div>` : '';
+
+      const score = risk.risk_score;
+      const badge = document.getElementById('riskBadge');
+      badge.textContent = `Risk ${score}/10`;
+      badge.className = `text-xs font-bold px-3 py-1 rounded-full ${score <= 3 ? 'bg-green-900 text-green-300' : score <= 6 ? 'bg-yellow-900 text-yellow-300' : 'bg-red-900 text-red-300'}`;
+
+      document.getElementById('riskSummary').textContent = risk.summary ?? '';
+      document.getElementById('riskFlags').innerHTML = (risk.risk_flags ?? []).map(f => `<li>${f}</li>`).join('');
+
+      results.classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>
