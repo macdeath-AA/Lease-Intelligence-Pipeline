@@ -35,6 +35,7 @@ def _compile_rows(results: list[PipelineResult]) -> list[RentRollRow]:
             filename=r.filename,
             tenant_name=l.tenant_name,
             property_address=l.property_address,
+            bedrooms=l.bedrooms,
             sqft=l.sqft,
             rent_per_sqft=rent_per_sqft,
             base_rent_monthly=l.base_rent_monthly,
@@ -43,6 +44,7 @@ def _compile_rows(results: list[PipelineResult]) -> list[RentRollRow]:
             rent_escalation_pct=l.rent_escalation_pct,
             personal_guarantee=l.personal_guarantee,
             risk_score=r.risk.risk_score,
+            risk_flags=r.risk.risk_flags,
         ))
     return rows
 

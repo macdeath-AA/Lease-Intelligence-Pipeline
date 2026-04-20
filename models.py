@@ -15,6 +15,7 @@ class LeaseData(BaseModel):
     rent_escalation_pct: float | None = None
     security_deposit: float | None = None
     personal_guarantee: bool | None = None
+    bedrooms: int | None = None
     sqft: float | None = None
     options: list[str] = []
     key_clauses: list[str] = []
@@ -33,6 +34,7 @@ class RentRollRow(BaseModel):
     filename: str
     tenant_name: str | None
     property_address: str | None
+    bedrooms: int | None
     sqft: float | None
     rent_per_sqft: float | None
     base_rent_monthly: float | None
@@ -41,6 +43,7 @@ class RentRollRow(BaseModel):
     rent_escalation_pct: float | None
     personal_guarantee: bool | None
     risk_score: int | None
+    risk_flags: list[str] = []
 
 class RentRollReport(BaseModel):
     rows: list[RentRollRow]

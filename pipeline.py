@@ -31,6 +31,7 @@ LEASE_EXTRACTION_TOOL = {
             "rent_escalation_pct":  {"type": ["number", "null"]},
             "security_deposit":     {"type": ["number", "null"]},
             "personal_guarantee":   {"type": ["boolean", "null"]},
+            "bedrooms":             {"type": ["integer", "null"]},
             "sqft":                 {"type": ["number", "null"]},
             "options":              {"type": "array", "items": {"type": "string"}},
             "key_clauses":          {"type": "array", "items": {"type": "string"}},
@@ -50,7 +51,7 @@ async def extract_structured_data(raw_text: str) -> LeaseData:
     tool_input = response.content[0].input
     return LeaseData(**tool_input)
 
-RISK_SYSTEM_PROMPT = "You are a commercial real estate attorney. Analyze the structured lease data and identify risks for the tenant."
+RISK_SYSTEM_PROMPT = "You are a commercial real estate attorney advising a landlord. Analyze the structured lease data and identify risks to the landlord — such as missing guarantees, no escalation, below-market rent, short term, weak security deposit, or problematic clauses."
 
 RISK_ANALYSIS_TOOL = {
     "name": "analyze_lease_risk",
