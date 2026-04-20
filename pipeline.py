@@ -1,12 +1,14 @@
 # pipeline.py — core processing pipeline
 
+import os
 import fitz  # PyMuPDF
 import anthropic
 from dotenv import load_dotenv
+from pathlib import Path
 from models import LeaseData, RiskAnalysis, PipelineResult
 
-load_dotenv()
-client = anthropic.Anthropic()
+load_dotenv(Path(__file__).parent / ".env")
+client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
 def extract_text_from_pdf(file_bytes: bytes) -> str:
     doc = fitz.open(stream=file_bytes, filetype="pdf")
