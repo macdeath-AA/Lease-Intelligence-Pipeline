@@ -2,7 +2,7 @@
 
 import asyncio
 from typing import List
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import PlainTextResponse
 
@@ -12,6 +12,7 @@ from rent_roll import build_rent_roll, to_csv
 from models import RentRollReport
 
 app = FastAPI(title="Lease Intelligence Pipeline")
+_last_report: RentRollReport | None = None
 
 @app.on_event("startup")
 def startup():
@@ -19,15 +20,16 @@ def startup():
 
 @app.post("/api/rent-roll", response_model=RentRollReport)
 async def upload_leases(files: List[UploadFile] = File(...)):
+    global _last_report
     contents = await asyncio.gather(*[f.read() for f in files])
     results = await asyncio.gather(*[run_pipeline(c, f.filename) for c, f in zip(contents, files)])
-    return build_rent_roll(list(results))
+    _last_report = build_rent_roll(list(results))
+    return _last_report
 
-@app.post("/api/rent-roll/csv")
-async def upload_leases_csv(files: List[UploadFile] = File(...)):
-    contents = await asyncio.gather(*[f.read() for f in files])
-    results = await asyncio.gather(*[run_pipeline(c, f.filename) for c, f in zip(contents, files)])
-    report = build_rent_roll(list(results))
-    return PlainTextResponse(to_csv(report), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=rent_roll.csv"})
+@app.get("/api/rent-roll/csv")
+def export_csv():
+    if not _last_report:
+        raise HTTPException(status_code=404, detail="No report generated yet")
+    return PlainTextResponse(to_csv(_last_report), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=rent_roll.csv"})
 
 app.mount("/", StaticFiles(directory="static", html=True), name="static")

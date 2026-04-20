@@ -20,7 +20,7 @@ def to_csv(report: RentRollReport) -> str:
     ])
     writer.writeheader()
     for row in report.rows:
-        writer.writerow(row.model_dump())
+        writer.writerow(row.model_dump(include=set(writer.fieldnames)))
     return output.getvalue()
 
 def _compile_rows(results: list[PipelineResult]) -> list[RentRollRow]:
