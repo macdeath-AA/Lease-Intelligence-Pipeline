@@ -2,8 +2,10 @@
 
 import fitz  # PyMuPDF
 import anthropic
+from dotenv import load_dotenv
 from models import LeaseData, RiskAnalysis, PipelineResult
 
+load_dotenv()
 client = anthropic.Anthropic()
 
 def extract_text_from_pdf(file_bytes: bytes) -> str:
