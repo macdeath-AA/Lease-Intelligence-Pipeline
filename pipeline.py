@@ -31,7 +31,6 @@ LEASE_EXTRACTION_TOOL = {
             "rent_escalation_pct":  {"type": ["number", "null"]},
             "security_deposit":     {"type": ["number", "null"]},
             "personal_guarantee":   {"type": ["boolean", "null"]},
-            "bedrooms":             {"type": ["integer", "null"]},
             "sqft":                 {"type": ["number", "null"]},
             "options":              {"type": "array", "items": {"type": "string"}},
             "key_clauses":          {"type": "array", "items": {"type": "string"}},

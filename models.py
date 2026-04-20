@@ -1,7 +1,7 @@
 # models.py — Pydantic schemas + SQLAlchemy ORM models
 
 from datetime import date
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 # --- Pydantic (API / validation) ---
 
@@ -15,10 +15,25 @@ class LeaseData(BaseModel):
     rent_escalation_pct: float | None = None
     security_deposit: float | None = None
     personal_guarantee: bool | None = None
-    bedrooms: int | None = None
     sqft: float | None = None
     options: list[str] = []
     key_clauses: list[str] = []
+
+    @model_validator(mode='before')
+    @classmethod
+    def coerce_invalid_to_none(cls, values):
+        from datetime import date as _date
+        import re
+        numeric = {'term_months', 'base_rent_monthly', 'rent_escalation_pct', 'security_deposit', 'sqft'}
+        dates   = {'lease_start', 'lease_end'}
+        for field in numeric:
+            if isinstance(values.get(field), str):
+                values[field] = None
+        for field in dates:
+            val = values.get(field)
+            if isinstance(val, str) and not re.match(r'^\d{4}-\d{2}-\d{2}$', val):
+                values[field] = None
+        return values
 
 class RiskAnalysis(BaseModel):
     risk_flags: list[str] = []
@@ -34,7 +49,6 @@ class RentRollRow(BaseModel):
     filename: str
     tenant_name: str | None
     property_address: str | None
-    bedrooms: int | None
     sqft: float | None
     rent_per_sqft: float | None
     base_rent_monthly: float | None
